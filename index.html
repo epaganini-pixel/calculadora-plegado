@@ -21,6 +21,12 @@
 
   <div class="grid">
     <aside class="panel">
+      <div class="sl" style="margin-top:0">¿Qué quiero calcular?</div>
+      <div class="seg s3" style="margin-bottom:18px">
+        <input type="radio" name="solve" id="s-flat" value="flat" checked><label for="s-flat">Desarrollo</label>
+        <input type="radio" name="solve" id="s-a1" value="a1"><label for="s-a1">Ala 1</label>
+        <input type="radio" name="solve" id="s-a2" value="a2"><label for="s-a2">Ala 2</label>
+      </div>
       <h3 class="sec">Parámetros</h3>
       <div id="fields"></div>
       <div class="sl">Las medidas de las alas son…</div>
@@ -33,15 +39,17 @@
         <input type="radio" name="ref" id="r-1" value="1" checked><label for="r-1">Extremo ala 1</label>
         <input type="radio" name="ref" id="r-2" value="2"><label for="r-2">Extremo ala 2</label>
       </div>
-      <p class="hint" style="margin-top:14px">Espesor, radio, ángulo y alas se cargan directamente sobre el dibujo 2D.</p>
+      <p class="hint" style="margin-top:14px">Espesor, radio, ángulo y alas se cargan directamente sobre el dibujo 2D. Con “Ala 1” o “Ala 2” cargás el desarrollo conocido y el ala elegida se calcula sola.</p>
     </aside>
 
     <main class="main">
       <section class="panel hero">
-        <div class="lab">DESARROLLO TOTAL (mm)</div>
+        <div class="lab" id="heroLab">DESARROLLO TOTAL (mm)</div>
         <div class="total mono" id="total">—<small>mm</small></div>
         <div class="note" id="heroNote" style="margin:0">Largo de chapa a cortar antes de plegar.</div>
         <div class="kpis">
+          <div class="kpi"><b id="kF">—</b><i>Desarrollo (largo de chapa)</i></div>
+          <div class="kpi"><b id="kA">—</b><i>Suma de alas (A1 + A2)</i></div>
           <div class="kpi"><b id="kBD">—</b><i id="kBDl">Descuento de plegado (BD)</i></div>
           <div class="kpi"><b id="kBA">—</b><i>Desarrollo del arco (BA)</i></div>
           <div class="kpi hl"><b id="kPos">—</b><i>Línea de plegado (centro), desde el extremo de referencia</i></div>
