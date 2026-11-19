@@ -47,7 +47,8 @@ input.bad{border-color:var(--danger)}
 .seg label:hover{border-color:var(--muted)}
 .seg input:checked+label{background:var(--text);border-color:var(--text);color:#fff}
 .seg input:focus-visible+label{outline:2px solid var(--brand-dark);outline-offset:2px}
-.seg.s3{grid-template-columns:repeat(3,1fr)}
+.total.dual{font-size:clamp(30px,5vw,54px)}
+.total.dual small{margin:0 22px 0 8px}
 .dl.calc{border-color:var(--brand-dark);background:#fff3d6}
 .dl.calc input{color:var(--brand-dark);cursor:default}
 .errs{color:var(--danger);font-size:13px}
