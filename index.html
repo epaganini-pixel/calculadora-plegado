@@ -22,10 +22,9 @@
   <div class="grid">
     <aside class="panel">
       <div class="sl" style="margin-top:0">¿Qué quiero calcular?</div>
-      <div class="seg s3" style="margin-bottom:18px">
+      <div class="seg" style="margin-bottom:18px">
         <input type="radio" name="solve" id="s-flat" value="flat" checked><label for="s-flat">Desarrollo</label>
-        <input type="radio" name="solve" id="s-a1" value="a1"><label for="s-a1">Ala 1</label>
-        <input type="radio" name="solve" id="s-a2" value="a2"><label for="s-a2">Ala 2</label>
+        <input type="radio" name="solve" id="s-L" value="L"><label for="s-L">Medidas de la L</label>
       </div>
       <h3 class="sec">Parámetros</h3>
       <div id="fields"></div>
@@ -34,12 +33,17 @@
         <input type="radio" name="mode" id="m-ext" value="ext" checked><label for="m-ext">Exteriores</label>
         <input type="radio" name="mode" id="m-int" value="int"><label for="m-int">Interiores</label>
       </div>
-      <div class="sl">Medir la línea de plegado desde…</div>
+      <div class="sl">Medir el pliegue desde…</div>
       <div class="seg">
         <input type="radio" name="ref" id="r-1" value="1" checked><label for="r-1">Extremo ala 1</label>
         <input type="radio" name="ref" id="r-2" value="2"><label for="r-2">Extremo ala 2</label>
       </div>
-      <p class="hint" style="margin-top:14px">Espesor, radio, ángulo y alas se cargan directamente sobre el dibujo 2D. Con “Ala 1” o “Ala 2” cargás el desarrollo conocido y el ala elegida se calcula sola.</p>
+      <div id="dpBlock" style="display:none"><div class="sl">La distancia al pliegue llega hasta…</div>
+        <div class="seg">
+          <input type="radio" name="dp" id="dp-c" value="c" checked><label for="dp-c">Centro del arco</label>
+          <input type="radio" name="dp" id="dp-t" value="t"><label for="dp-t">Inicio del arco</label>
+        </div></div>
+      <p class="hint" style="margin-top:14px">Espesor, radio, ángulo y alas se cargan sobre el dibujo 2D. En “Medidas de la L” cargás el desarrollo y la distancia al pliegue, y las dos alas se calculan solas.</p>
     </aside>
 
     <main class="main">
