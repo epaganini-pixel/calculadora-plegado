@@ -1,24 +1,28 @@
 /* ---------- Utilidades y campos ---------- */
 const $ = id => document.getElementById(id);
 const fmt = (n,d=2) => n.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const fmtIn = x => String(+x.toFixed(3)).replace('.',',');
 const num = s => parseFloat(String(s).replace(',','.'));
 const RAD = Math.PI/180;
 const FIELDS = [
-  ['f','Desarrollo (largo de chapa)','mm'],['d','Distancia al pliegue','mm'],['t','Espesor (e)','mm'],
-  ['ri','Radio interior (Ri)','mm'],['th','Ángulo de plegado (θ)','°'],['a1','Longitud ala 1','mm'],
-  ['a2','Longitud ala 2','mm'],['k','Factor K',''],['w','Ancho (opcional, solo vista 3D)','mm']
+  ['t','Espesor (e)','mm'],['ri','Radio interior (Ri)','mm'],['th','Ángulo de plegado (θ)','°'],
+  ['a1','Longitud ala 1 (A1)','mm'],['a2','Longitud ala 2 (A2)','mm'],
+  ['f','Desarrollo total (F)','mm'],['d','Distancia al pliegue (d)','mm'],
+  ['k','Factor K',''],['w','Ancho (opcional, solo vista 3D)','mm']
 ];
 const RULES = {
-  f:[x=>x>0,'El desarrollo debe ser mayor que 0.'], d:[x=>x>0,'La distancia al pliegue debe ser mayor que 0.'],
   t:[x=>x>0,'El espesor debe ser mayor que 0.'], ri:[x=>x>=0,'El radio interior no puede ser negativo.'],
   th:[x=>x>0&&x<180,'El ángulo debe estar entre 0° y 180° (sin incluirlos).'],
   a1:[x=>x>0,'La longitud del ala 1 debe ser mayor que 0.'], a2:[x=>x>0,'La longitud del ala 2 debe ser mayor que 0.'],
+  f:[x=>x>0,'El desarrollo debe ser mayor que 0.'], d:[x=>x>0,'La distancia al pliegue debe ser mayor que 0.'],
   k:[x=>x>=0&&x<=1,'El factor K debe estar entre 0 y 1.'], w:[x=>x>0,'El ancho debe ser mayor que 0.']
 };
-const REQ = { flat:['t','ri','th','a1','a2','k'], L:['t','ri','th','k','f','d'] };
-const SIDE = ['f','d','k','w'];
+const BASE = ['t','ri','th','k'];          // siempre necesarios
+const GL = ['a1','a2'], GF = ['f','d'];    // grupo "L" (alas) y grupo "F" (chapa desplegada)
 const PH = {k:'ej. 0,33', w:'ej. 60'};
-const GH = {t:2, ri:2, th:90, a1:50, a2:30, k:0.33, w:35};   // pieza de ejemplo (solo para el dibujo fantasma)
+const GH = {t:2, ri:2, th:90, a1:50, a2:30, k:0.33, w:35};   // pieza de ejemplo (solo dibujo fantasma)
+let ultimo = null;          // último grupo editado por la persona: 'L' o 'F' (es el que se toma como dato)
+const salida = new Set();   // campos completados por el cálculo (se vacían al cambiar un dato)
 
 /* ---------- Modelo: preparado para N pliegues ----------
    pieza = { t, k, mode, alas:[A1,A2,...An+1], pliegues:[{th,ri},...] }  */
@@ -53,40 +57,53 @@ function calcular(p){
 }
 
 /* ---------- UI ---------- */
-FIELDS.filter(f=>SIDE.includes(f[0])).forEach(([id,lab,u])=>{
-  $('fields').insertAdjacentHTML('beforeend',`<div class="row" hidden><label for="${id}">${lab}</label><div class="inp"><input id="${id}" type="text" inputmode="decimal" autocomplete="off" placeholder="${PH[id]||'0,0'}"><span>${u}</span></div></div>`);
+['k','w'].forEach(id=>{
+  const [,lab,u]=FIELDS.find(f=>f[0]===id);
+  $('fields').insertAdjacentHTML('beforeend',`<div class="row"><label for="${id}">${lab}</label><div class="inp"><input id="${id}" type="text" inputmode="decimal" autocomplete="off" placeholder="${PH[id]}"><span>${u}</span></div></div>`);
 });
-['a1','a2','t','ri','th'].forEach(id=>$(id).placeholder='0,0');
-$('k').closest('.row').hidden = false; $('w').closest('.row').hidden = false;
+['a1','a2','t','ri','th','f','d'].forEach(id=>{ $(id).placeholder='0,0'; });
 
 const pieza = v => ({t:v.t, k:v.k, mode:v.mode, alas:[v.a1,v.a2], pliegues:[{th:v.th, ri:v.ri}]});
 function partes(v){
   const tn=Math.tan(v.th*RAD/2), ba=RAD*v.th*(v.ri+v.k*v.t), sb=(v.mode==='ext'?v.ri+v.t:v.ri)*tn;
   return {ba, sb, bd:2*sb-ba};
 }
+const lleno = id => $(id).value.trim()!=='';
+function fuente(){
+  if(ultimo) return ultimo;
+  const L=lleno('a1')&&lleno('a2'), F=lleno('f')&&lleno('d');
+  return L?'L':(F?'F':null);
+}
 function leer(){
   const q = n => document.querySelector('input[name='+n+']:checked').value;
-  const solve=q('solve'), v={solve, dp:q('dp'), mode:q('mode'), ref:+q('ref')};
-  const req=REQ[solve], errs=[], missing=[];
+  const src=fuente(), v={src, dp:q('dp'), mode:q('mode'), ref:+q('ref')};
+  const req=[...BASE, ...(src==='L'?GL:(src==='F'?GF:[]))], errs=[], missing=[];
   FIELDS.forEach(([id,lab])=>{
     const el=$(id), box=el.closest('.dl')||el.closest('.inp'), raw=el.value.trim();
-    const needed=req.includes(id), used=needed||id==='w';
+    const falta = raw==='' && (req.includes(id) || (src===null && (GL.includes(id)||GF.includes(id))));
     let bad=false; v[id]=NaN;
-    if(used && raw!==''){
+    if(raw!==''){
       const x=num(raw); v[id]=x;
       if(!isFinite(x)){ bad=true; errs.push('Revisá “'+lab+'”: ingresá un número.'); }
       else if(!RULES[id][0](x)){ bad=true; errs.push(RULES[id][1]); }
     }
-    if(needed && raw==='') missing.push(lab);
+    if(raw==='' && req.includes(id)) missing.push(lab);
     el.classList.toggle('bad',bad);
-    if(box){ box.classList.toggle('bad',bad); box.classList.toggle('empty',needed&&raw===''); }
+    if(box){ box.classList.toggle('bad',bad); box.classList.toggle('empty',falta); }
   });
+  if(src===null) missing.push('las alas A1 y A2, o bien el desarrollo F y la distancia d');
   return {v,errs,missing};
 }
-// Cálculo directo (alas → desarrollo) o inverso (desarrollo + distancia al pliegue → alas)
+// Distancia al pliegue medida desde el extremo de referencia (centro del arco o inicio del arco)
+function dDe(c,v){
+  const b=c.bends[0];
+  const ini = v.ref===1 ? b.s1 : c.flat-b.s2, cen = v.ref===1 ? b.c : c.flat-b.c;
+  return v.dp==='c' ? cen : ini;
+}
+// Directo (A1, A2 → desarrollo) o inverso (desarrollo + distancia al pliegue → A1, A2)
 function resolver(v0){
   const v={...v0};
-  if(v.solve==='L'){
+  if(v.src==='F'){
     const {ba,sb,bd}=partes(v);
     const Aref=v.d-(v.dp==='c'?ba/2:0)+sb, Aoth=v.f+bd-Aref;
     if(!(Aref>0)||!(Aoth>0)) return {errs:['Con esos datos una de las alas queda en 0 o negativa: revisá el desarrollo, la distancia al pliegue o el radio.']};
@@ -98,20 +115,20 @@ function resolver(v0){
 const errHtml = a => a.map(e=>'<div>⚠ '+e+'</div>').join('');
 function dibujar(v,c,ghost){
   const g=geometry(c,v);
-  draw2D(g,c,v); draw3D(g,{...v,w:v.w>0?v.w:Math.max(v.a1,v.a2)*0.6});
-  $('d2').classList.toggle('ghost',ghost); $('d3').classList.toggle('ghost',ghost);
+  draw2D(g,c,v); draw3D(g,{...v,w:v.w>0?v.w:Math.max(v.a1,v.a2)*0.6}); drawFlat(c,v);
+  ['d2','d3','dflat'].forEach(i=>$(i).classList.toggle('ghost',ghost));
 }
 const ocultar = () => { $('resultado').hidden = true; };
+function limpiarSalidas(){ salida.forEach(id=>{ $(id).value=''; }); salida.clear(); }
 
 // Se ejecuta con cada cambio de datos: indicadores, avisos y dibujo de vista previa (sin resultados)
 function refrescar(invalida){
-  const {v,errs,missing}=leer(), L=v.solve==='L';
-  ['a1','a2'].forEach(id=>{ const el=$(id); el.readOnly=L; el.closest('.dl').classList.toggle('calc',L); el.placeholder=L?'auto':'0,0'; });
-  ['f','d'].forEach(id=>{ $(id).closest('.row').hidden=!L; });
-  $('dpBlock').hidden=!L;
-  if(invalida){ ocultar(); if(L){ $('a1').value=''; $('a2').value=''; } }
+  const {v,errs,missing}=leer();
+  ['a1','a2','f','d'].forEach(id=>{ $(id).closest('.dl').classList.toggle('calc',salida.has(id)); });
+  [[GL,'F'],[GF,'L']].forEach(([g,otro])=>g.forEach(id=>{ $(id).placeholder = v.src===otro ? 'auto' : '0,0'; }));
+  if(invalida) ocultar();
   const all=errs.slice(); let real=false, c=null, vv=v;
-  if(!errs.length && !missing.length && !L){
+  if(!errs.length && !missing.length){
     const r=resolver(v);
     if(r.errs.length) all.push(...r.errs); else { real=true; c=r.c; vv=r.v; }
   }
@@ -120,7 +137,7 @@ function refrescar(invalida){
   $('falta').className='falta'+(n||all.length?'':' ok');
   $('falta').textContent = n ? 'Faltan '+n+' dato'+(n>1?'s':'')+': completá las celdas que titilan.' : (all.length ? 'Corregí los valores marcados en rojo.' : 'Datos completos · tocá Calcular.');
   if(real) dibujar(vv,c,false);
-  else { const vg={...GH,mode:v.mode,ref:1}; dibujar(vg,calcular(pieza(vg)),true); }
+  else { const vg={...GH,mode:v.mode,ref:v.ref,dp:v.dp}; dibujar(vg,calcular(pieza(vg)),true); }
 }
 
 // Barra de cálculo simulada
@@ -141,19 +158,22 @@ function animar(fin){
 function mostrarResultados(){
   const {v,errs,missing}=leer(); if(errs.length||missing.length) return;
   const r=resolver(v); if(r.errs.length){ $('errs').innerHTML=errHtml(r.errs); return; }
-  const vv=r.v, c=r.c, b=c.bends[0], ext=vv.mode==='ext', L=vv.solve==='L';
-  if(L){ $('a1').value=String(+vv.a1.toFixed(3)).replace('.',','); $('a2').value=String(+vv.a2.toFixed(3)).replace('.',','); }
-  dibujar(vv,c,false);
-  const mm='<small>mm</small>', med=ext?'exteriores':'interiores';
-  $('total').classList.toggle('dual',L);
-  if(!L){
+  const vv=r.v, c=r.c, b=c.bends[0], ext=vv.mode==='ext', F=vv.src==='F', dOut=dDe(c,vv);
+  // completar en el dibujo lo que se calculó
+  const out = F ? {a1:vv.a1, a2:vv.a2} : {f:c.flat, d:dOut};
+  salida.clear();
+  Object.entries(out).forEach(([id,val])=>{ $(id).value=fmtIn(val); salida.add(id); });
+  refrescar(false);
+  const mm='<small>mm</small>', med=ext?'exteriores':'interiores', ini=vv.dp==='c'?'centro':'inicio';
+  $('total').classList.toggle('dual',F);
+  if(!F){
     $('heroLab').textContent='DESARROLLO TOTAL (mm)';
     $('total').innerHTML=fmt(c.flat)+mm;
-    $('heroNote').textContent='Largo de chapa a cortar antes de plegar (medidas '+med+').';
+    $('heroNote').textContent='Largo de chapa a cortar antes de plegar (medidas '+med+'). Pliegue a '+fmt(dOut)+' mm del extremo del ala '+vv.ref+' ('+ini+' del arco).';
   } else {
     $('heroLab').textContent='MEDIDAS DE LA L (mm)';
     $('total').innerHTML=fmt(vv.a1)+'<small>A1</small>'+fmt(vv.a2)+'<small>A2</small>';
-    $('heroNote').textContent='Medidas '+med+' de la pieza plegada, para una chapa de '+fmt(c.flat)+' mm con el pliegue a '+fmt(vv.d)+' mm del extremo del ala '+vv.ref+' ('+(vv.dp==='c'?'centro':'inicio')+' del arco).';
+    $('heroNote').textContent='Medidas '+med+' de la pieza plegada, para una chapa de '+fmt(c.flat)+' mm con el pliegue a '+fmt(vv.d)+' mm del extremo del ala '+vv.ref+' ('+ini+' del arco).';
   }
   $('kBD').textContent=fmt(b.bd)+' mm'; $('kBDl').textContent='Descuento de plegado (BD, '+(ext?'ext.':'int.')+')';
   $('kBA').textContent=fmt(b.ba)+' mm';
@@ -161,37 +181,13 @@ function mostrarResultados(){
   $('kL1').textContent=fmt(c.legs[0])+' mm'; $('kL2').textContent=fmt(c.legs[1])+' mm';
   $('kRi').textContent=fmt(b.ri)+' mm'; $('kRe').textContent=fmt(b.re)+' mm';
   const pos=x=>vv.ref===1?x:c.flat-x;
-  $('kPos').textContent=fmt(pos(b.c))+' mm';
+  $('kPos').textContent=fmt(dOut)+' mm';
+  $('kPosl').textContent='Distancia al pliegue (d): hasta el '+ini+' del arco, desde el extremo del ala '+vv.ref;
   drawStrip(c,vv,pos);
   const R=$('resultado'); R.hidden=false; R.classList.remove('reveal'); void R.offsetWidth; R.classList.add('reveal');
   R.scrollIntoView({behavior:'smooth',block:'start'});
 }
 
-/* ---------- Eventos ---------- */
-document.addEventListener('input', ()=>refrescar(true));
-document.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.type==='text'){ e.preventDefault(); $('calc').click(); } });
-$('calc').addEventListener('click', ()=>{
-  const {v,errs,missing}=leer();
-  if(errs.length||missing.length){
-    refrescar(false);
-    if(missing.length){
-      const em=[...document.querySelectorAll('.empty')];
-      em.forEach(e=>{ e.classList.remove('shake'); void e.offsetWidth; e.classList.add('shake'); });
-      const f=em.map(e=>e.querySelector('input')).find(Boolean); if(f) f.focus({preventScroll:false});
-      $('errs').innerHTML+='<div>Faltan: '+missing.join(', ')+'.</div>';
-    }
-    return;
-  }
-  const r=resolver(v);
-  if(r.errs.length){ $('errs').innerHTML=errHtml(r.errs); return; }
-  animar(mostrarResultados);
-});
-$('reset').addEventListener('click', ()=>{
-  FIELDS.forEach(([id])=>{ $(id).value=''; });
-  ['m-ext','r-1','s-flat','dp-c'].forEach(i=>{ $(i).checked=true; });
-  ocultar(); refrescar(false);
-});
-refrescar(false);
 /* ---------- Geometría del perfil (coordenadas matemáticas, y hacia arriba) ---------- */
 function geometry(c,v){
   const b = c.bends[0], T = v.t, R = v.ri, L1 = c.legs[0], L2 = c.legs[1];
@@ -229,8 +225,8 @@ function dim(out,S,p1,p2,n,off,txt){
   const mx=(a2[0]+b2[0])/2+nx*9, my=(a2[1]+b2[1])/2+ny*9;
   out.push(`<text class="halo dimtx" text-anchor="middle" dominant-baseline="middle" transform="translate(${mx} ${my}) rotate(${ang})">${txt}</text>`);
 }
-function place(id,p,dx=0,dy=0){
-  const el=$(id); el.style.left=((p[0]+dx)/680*100)+'%'; el.style.top=((p[1]+dy)/420*100)+'%';
+function place(id,p,dx=0,dy=0,W=680,H=420){
+  const el=$(id); el.style.left=((p[0]+dx)/W*100)+'%'; el.style.top=((p[1]+dy)/H*100)+'%';
 }
 
 function draw2D(g,c,v){
@@ -338,3 +334,62 @@ function drawStrip(c,v,pos){
   const t1=pos(b.s1), t2=pos(b.s2), lo=Math.min(t1,t2), hi=Math.max(t1,t2);
   $('stripNote').innerHTML = `Apoyá el <b>extremo de la ${refL}</b> en el cero y marcá la línea de plegado a <b>${fmt(pos(b.c))} mm</b> (centro del arco). Si preferís marcar el arco completo, hacelo entre <b>${fmt(lo)}</b> y <b>${fmt(hi)} mm</b>. Medida desde el otro extremo (${othL}): ${fmt(c.flat-pos(b.c))} mm.`;
 }
+
+
+/* ---------- Chapa desplegada editable (F y d) ---------- */
+function drawFlat(c,v){
+  const W=680,H=160,X0=60,X1=620,y=68,h=30,b=c.bends[0],F=c.flat,k=(X1-X0)/F;
+  const pos=x=>v.ref===1?x:F-x, X=x=>X0+pos(x)*k;
+  const xa=Math.min(X(b.s1),X(b.s2)), xb=Math.max(X(b.s1),X(b.s2)), xc=X(b.c);
+  const xm = v.dp==='c' ? xc : (v.ref===1 ? X(b.s1) : X(b.s2));
+  const yt=32, yb=y+h+32;
+  const o=[`<defs><marker id="ar3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--dim)"/></marker></defs>`];
+  o.push(`<rect x="${X0}" y="${y}" width="${X1-X0}" height="${h}" class="part" rx="2"/>`);
+  o.push(`<rect x="${xa}" y="${y}" width="${Math.max(xb-xa,1.5)}" height="${h}" style="fill:var(--amber);fill-opacity:.35"/>`);
+  o.push(`<line class="bend" x1="${xa}" y1="${y-6}" x2="${xa}" y2="${y+h+6}"/><line class="bend" x1="${xb}" y1="${y-6}" x2="${xb}" y2="${y+h+6}"/>`);
+  o.push(`<line class="neutral" x1="${xc}" y1="${y-10}" x2="${xc}" y2="${y+h+10}" style="stroke-width:1.6"/>`);
+  o.push(`<text class="halo" x="${X0+6}" y="${y+h/2}" dominant-baseline="middle" style="font-weight:600">${v.ref===1?'A1':'A2'}</text>`);
+  o.push(`<text class="halo" x="${X1-6}" y="${y+h/2}" text-anchor="end" dominant-baseline="middle" style="font-weight:600">${v.ref===1?'A2':'A1'}</text>`);
+  // cota total F
+  o.push(`<line class="ext" x1="${X0}" y1="${y-2}" x2="${X0}" y2="${yt-6}"/><line class="ext" x1="${X1}" y1="${y-2}" x2="${X1}" y2="${yt-6}"/>`);
+  o.push(`<line class="dimln" x1="${X0}" y1="${yt}" x2="${X1}" y2="${yt}" marker-start="url(#ar3)" marker-end="url(#ar3)"/>`);
+  // cota d (desde el extremo de referencia hasta la marca del pliegue)
+  o.push(`<line class="ext" x1="${X0}" y1="${y+h+2}" x2="${X0}" y2="${yb+6}"/><line class="ext" x1="${xm}" y1="${y+h+8}" x2="${xm}" y2="${yb+6}"/>`);
+  o.push(`<line class="dimln" x1="${X0}" y1="${yb}" x2="${xm}" y2="${yb}" marker-start="url(#ar3)" marker-end="url(#ar3)"/>`);
+  o.push(`<text x="${X0}" y="${H-4}" style="fill:var(--muted)" font-size="11">▲ extremo de referencia (ala ${v.ref})</text>`);
+  $('dflat').innerHTML=o.join('');
+  place('dl-f',[(X0+X1)/2,yt],0,0,W,H);
+  place('dl-d',[Math.max((X0+xm)/2,X0+60),yb],0,0,W,H);
+}
+
+/* ---------- Eventos ---------- */
+document.addEventListener('input', e=>{
+  const id=e.target.id;
+  if(GL.includes(id)) ultimo='L'; else if(GF.includes(id)) ultimo='F';
+  salida.delete(id);      // lo que se escribe a mano deja de ser un resultado
+  limpiarSalidas();       // los demás resultados quedaron viejos
+  refrescar(true);
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Enter' && e.target.type==='text'){ e.preventDefault(); $('calc').click(); } });
+$('calc').addEventListener('click', ()=>{
+  const {v,errs,missing}=leer();
+  if(errs.length||missing.length){
+    refrescar(false);
+    if(missing.length){
+      const em=[...document.querySelectorAll('.empty')];
+      em.forEach(e=>{ e.classList.remove('shake'); void e.offsetWidth; e.classList.add('shake'); });
+      const f=em.map(e=>e.querySelector('input')).find(Boolean); if(f) f.focus();
+      $('errs').innerHTML+='<div>Faltan: '+missing.join(', ')+'.</div>';
+    }
+    return;
+  }
+  const r=resolver(v);
+  if(r.errs.length){ $('errs').innerHTML=errHtml(r.errs); return; }
+  animar(mostrarResultados);
+});
+$('reset').addEventListener('click', ()=>{
+  FIELDS.forEach(([id])=>{ $(id).value=''; });
+  ['m-ext','r-1','dp-c'].forEach(i=>{ $(i).checked=true; });
+  ultimo=null; salida.clear(); ocultar(); refrescar(false);
+});
+refrescar(false);
