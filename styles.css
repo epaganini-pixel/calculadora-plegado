@@ -84,3 +84,29 @@ svg .halo{stroke:var(--panel);stroke-width:4px;paint-order:stroke;stroke-linejoi
 .dl.bad{border-color:var(--danger)}.dl.bad input{color:var(--danger)}
 footer{margin-top:18px;color:var(--muted);font-size:12px}
 @media(prefers-reduced-motion:reduce){#d2{transition:none}}
+
+/* ===== Estado vacío, indicadores y barra de cálculo ===== */
+[hidden]{display:none!important}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(255,175,15,.6)}70%{box-shadow:0 0 0 10px rgba(255,175,15,0)}100%{box-shadow:0 0 0 0 rgba(255,175,15,0)}}
+@keyframes shake{0%,100%{transform:translate(-50%,-50%)}25%{transform:translate(calc(-50% - 6px),-50%)}75%{transform:translate(calc(-50% + 6px),-50%)}}
+@keyframes shakeb{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes barmove{to{background-position:34px 0}}
+.dl.empty{border-color:var(--brand);background:#fff8e6;animation:pulse 1.8s infinite}
+.dl.empty.shake{animation:shake .4s}
+.inp.empty input{border-color:var(--brand);background:#fff8e6;animation:pulse 1.8s infinite}
+.inp.empty.shake{animation:shakeb .4s}
+.dl input::placeholder,.inp input::placeholder{color:#c5a45a;font-weight:500}
+.ghost{opacity:.28}
+.falta{display:inline-block;font-size:13px;font-weight:600;color:#8a5d00;background:#fff3d6;border-radius:99px;padding:5px 14px;margin:0 0 8px}
+.falta.ok{color:#3f7a49;background:#e6f2e8}
+.errs{margin:0 0 8px}
+.calcbar{display:flex;gap:18px;align-items:center;flex-wrap:wrap;margin-top:16px}
+.calcbar>button{min-height:56px;font-size:17px;padding:14px 38px}
+.calcbar>button:disabled{opacity:.6;cursor:progress}
+.pbar{flex:1;min-width:220px}
+.ptrack{height:14px;border-radius:99px;background:var(--border-soft);border:1px solid var(--border);overflow:hidden}
+.ptrack i{display:block;height:100%;width:0;background:repeating-linear-gradient(135deg,var(--brand) 0 12px,#ffc654 12px 24px);background-size:34px 34px;animation:barmove .8s linear infinite}
+.plab{display:block;font-size:12px;color:var(--muted);margin-top:6px}
+.reveal{animation:rise .45s ease both}
+@media(prefers-reduced-motion:reduce){.dl.empty,.inp.empty input,.ptrack i,.reveal,.shake{animation:none!important}}
