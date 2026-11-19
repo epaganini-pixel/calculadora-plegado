@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desarrollo de chapa · Calculadora de plegados</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div class="header-brand">
+      <div class="logo-badge"><img src="logo.png" alt="" onerror="this.parentNode.style.display='none'"></div>
+      <div>
+        <h1>Desarrollo de chapa</h1>
+        <div class="sub">Calculadora de plegados · pieza en L · todas las medidas en mm (coma o punto decimal)</div>
+      </div>
+    </div>
+    <div class="hbtns"><button id="reset" type="button">Restablecer valores</button></div>
+  </div>
+
+  <div class="grid">
+    <aside class="panel">
+      <h3 class="sec">Parámetros</h3>
+      <div id="fields"></div>
+      <div class="sl">Las medidas de las alas son…</div>
+      <div class="seg">
+        <input type="radio" name="mode" id="m-ext" value="ext" checked><label for="m-ext">Exteriores</label>
+        <input type="radio" name="mode" id="m-int" value="int"><label for="m-int">Interiores</label>
+      </div>
+      <div class="sl">Medir la línea de plegado desde…</div>
+      <div class="seg">
+        <input type="radio" name="ref" id="r-1" value="1" checked><label for="r-1">Extremo ala 1</label>
+        <input type="radio" name="ref" id="r-2" value="2"><label for="r-2">Extremo ala 2</label>
+      </div>
+      <p class="hint" style="margin-top:14px">Espesor, radio, ángulo y alas se cargan directamente sobre el dibujo 2D.</p>
+    </aside>
+
+    <main class="main">
+      <section class="panel hero">
+        <div class="lab">DESARROLLO TOTAL (mm)</div>
+        <div class="total mono" id="total">—<small>mm</small></div>
+        <div class="note" id="heroNote" style="margin:0">Largo de chapa a cortar antes de plegar.</div>
+        <div class="kpis">
+          <div class="kpi"><b id="kBD">—</b><i id="kBDl">Descuento de plegado (BD)</i></div>
+          <div class="kpi"><b id="kBA">—</b><i>Desarrollo del arco (BA)</i></div>
+          <div class="kpi hl"><b id="kPos">—</b><i>Línea de plegado (centro), desde el extremo de referencia</i></div>
+          <div class="kpi"><b id="kSB">—</b><i id="kSBl">Setback</i></div>
+          <div class="kpi"><b id="kL1">—</b><i>Ala 1 recta</i></div>
+          <div class="kpi"><b id="kL2">—</b><i>Ala 2 recta</i></div>
+          <div class="kpi"><b id="kRi">—</b><i>Radio interior</i></div>
+          <div class="kpi"><b id="kRe">—</b><i>Radio exterior</i></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h3 class="sec">Pieza · tocá una cota y escribí el valor (mm)</h3>
+        <div class="errs" id="errs" role="alert" style="margin:0 0 8px"></div>
+        <div class="d2wrap">
+          <svg id="d2" viewBox="0 0 680 420" role="img" aria-label="Perfil de la pieza plegada"></svg>
+          <label class="dl" id="dl-a1"><b>A1</b><input id="a1" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label class="dl" id="dl-a2"><b>A2</b><input id="a2" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label class="dl" id="dl-t"><b>e</b><input id="t" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label class="dl am" id="dl-ri"><b>Ri</b><input id="ri" type="text" inputmode="decimal" autocomplete="off"></label>
+          <label class="dl am" id="dl-th"><b>θ°</b><input id="th" type="text" inputmode="decimal" autocomplete="off"></label>
+        </div>
+      </section>
+
+      <div class="two">
+        <section class="panel">
+          <h3 class="sec">Cómo marcar la chapa</h3>
+          <svg id="strip" viewBox="0 0 680 150" role="img" aria-label="Chapa desarrollada con la posición del plegado"></svg>
+          <p class="note" id="stripNote"></p>
+        </section>
+        <section class="panel"><h3 class="sec">Vista 3D</h3><svg id="d3" viewBox="0 0 680 420" role="img" aria-label="Vista 3D de la pieza"></svg></section>
+      </div>
+    </main>
+  </div>
+  <footer>Fórmulas: BA = π·θ/180·(Ri + K·e) · SB = (Ri + e)·tan(θ/2) en medidas exteriores, Ri·tan(θ/2) en interiores · BD = 2·SB − BA. El factor K es orientativo: confirmalo con una prueba de plegado en tu máquina y material.</footer>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
