@@ -1,7 +1,7 @@
 /* ---------- Datos ---------- */
-const DEF = {t:2, ri:2, th:90, a1:50, a2:30, k:0.33, w:60};
+const DEF = {f:76.18, t:2, ri:2, th:90, a1:50, a2:30, k:0.33, w:60};
 const FIELDS = [
-  ['t','Espesor (e)','mm'],['ri','Radio interior (Ri)','mm'],['th','Ángulo de plegado (θ)','°'],
+  ['f','Desarrollo conocido','mm'],['t','Espesor (e)','mm'],['ri','Radio interior (Ri)','mm'],['th','Ángulo de plegado (θ)','°'],
   ['a1','Longitud ala 1','mm'],['a2','Longitud ala 2','mm'],['k','Factor K',''],['w','Ancho (solo vista 3D)','mm']
 ];
 const $ = id => document.getElementById(id);
@@ -43,17 +43,18 @@ function calcular(p){
 
 /* ---------- UI ---------- */
 const fEl = $('fields');
-const SIDE=['k','w'];
+const SIDE=['f','k','w'];
 FIELDS.filter(f=>SIDE.includes(f[0])).forEach(([id,lab,u])=>{
   fEl.insertAdjacentHTML('beforeend',`<div class="row"><label for="${id}">${lab}</label><div class="inp"><input id="${id}" type="text" inputmode="decimal" autocomplete="off"><span>${u}</span></div></div>`);
 });
 function setDefaults(){
   FIELDS.forEach(([id])=>{ $(id).value = String(DEF[id]).replace('.',','); });
-  $('m-ext').checked = true; $('r-1').checked = true;
+  $('m-ext').checked = true; $('r-1').checked = true; $('s-flat').checked = true;
 }
 function leer(){
   const v = {}, errs = [];
   const rules = {
+    f:[x=>x>0,'El desarrollo debe ser mayor que 0.'],
     t:[x=>x>0,'El espesor debe ser mayor que 0.'],
     ri:[x=>x>=0,'El radio interior no puede ser negativo.'],
     th:[x=>x>0&&x<180,'El ángulo debe estar entre 0° y 180° (sin incluirlos).'],
@@ -62,8 +63,13 @@ function leer(){
     k:[x=>x>=0&&x<=1,'El factor K debe estar entre 0 y 1.'],
     w:[x=>x>0,'El ancho debe ser mayor que 0.']
   };
+  const solve = document.querySelector('input[name=solve]:checked').value;
+  v.solve = solve;
   FIELDS.forEach(([id])=>{
     const x = num($(id).value); v[id]=x;
+    if(id===solve || (id==='f' && solve==='flat')){
+      $(id).classList.remove('bad'); const d0=$(id).closest('.dl'); if(d0) d0.classList.remove('bad'); return;
+    }
     const bad = !isFinite(x) || !rules[id][0](x);
     $(id).classList.toggle('bad', bad); const dl=$(id).closest('.dl'); if(dl) dl.classList.toggle('bad',bad);
     if(bad) errs.push(isFinite(x) ? rules[id][1] : 'Revisá el campo “'+FIELDS.find(f=>f[0]===id)[1]+'”: ingresá un número.');
@@ -73,9 +79,13 @@ function leer(){
   return {v, errs};
 }
 
+function bdOf(v){
+  const tn=Math.tan(v.th*RAD/2), ba=RAD*v.th*(v.ri+v.k*v.t), sb=(v.mode==='ext'?v.ri+v.t:v.ri)*tn;
+  return 2*sb-ba;
+}
 function limpiar(){
   ['total'].forEach(i=>$(i).innerHTML='—<small>mm</small>');
-  ['kBD','kBA','kPos','kSB','kL1','kL2','kRi','kRe'].forEach(i=>$(i).textContent='—');
+  ['kBD','kBA','kPos','kSB','kL1','kL2','kRi','kRe','kF','kA'].forEach(i=>$(i).textContent='—');
   ['strip','d3'].forEach(i=>$(i).innerHTML='');
   $('d2').style.opacity='.3';
   $('stripNote').textContent='';
@@ -83,6 +93,14 @@ function limpiar(){
 
 function update(){
   const {v, errs} = leer();
+  const solve = v.solve;
+  ['a1','a2'].forEach(id=>{ const ro=id===solve; $(id).readOnly=ro; $(id).closest('.dl').classList.toggle('calc',ro); });
+  $('f').closest('.row').style.display = solve==='flat' ? 'none' : '';
+  if(!errs.length && solve!=='flat'){
+    const tgt = v.f + bdOf(v) - (solve==='a1' ? v.a2 : v.a1);
+    if(!(tgt>0)) errs.push('Con ese desarrollo, el ala a calcular queda en 0 o negativa: revisá el desarrollo o la otra ala.');
+    else { v[solve]=tgt; $(solve).value = String(+tgt.toFixed(3)).replace('.',','); }
+  }
   let c = null;
   if(!errs.length){
     const pieza = {t:v.t, k:v.k, mode:v.mode, alas:[v.a1,v.a2], pliegues:[{th:v.th, ri:v.ri}]};
@@ -94,8 +112,19 @@ function update(){
   const b = c.bends[0];
   const ext = v.mode==='ext';
   $('d2').style.opacity='1';
-  $('total').innerHTML = fmt(c.flat)+'<small>mm</small>';
-  $('heroNote').textContent = 'Largo de chapa a cortar antes de plegar (medidas '+(ext?'exteriores':'interiores')+').';
+  const mm = '<small>mm</small>', med = ext?'exteriores':'interiores';
+  if(solve==='flat'){
+    $('heroLab').textContent = 'DESARROLLO TOTAL (mm)';
+    $('total').innerHTML = fmt(c.flat)+mm;
+    $('heroNote').textContent = 'Largo de chapa a cortar antes de plegar (medidas '+med+').';
+  } else {
+    const n = solve==='a1' ? '1' : '2', o = solve==='a1' ? '2' : '1';
+    $('heroLab').textContent = 'ALA '+n+' (mm) · MEDIDA TOTAL';
+    $('total').innerHTML = fmt(v[solve])+mm;
+    $('heroNote').textContent = 'Medida '+med+' del ala '+n+' para un desarrollo de '+fmt(c.flat)+' mm, con el ala '+o+' de '+fmt(v[solve==='a1'?'a2':'a1'])+' mm.';
+  }
+  $('kF').textContent = fmt(c.flat)+' mm';
+  $('kA').textContent = fmt(v.a1+v.a2)+' mm';
   $('kBD').textContent = fmt(b.bd)+' mm';
   $('kBDl').textContent = 'Descuento de plegado (BD, '+(ext?'ext.':'int.')+')';
   $('kBA').textContent = fmt(b.ba)+' mm';
