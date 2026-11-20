@@ -1,3 +1,4 @@
+if(window.APP_V!==6) throw new Error('index.html y app.js son de versiones distintas');
 /* ---------- Utilidades y campos ---------- */
 const $ = id => document.getElementById(id);
 const fmt = (n,d=2) => n.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
