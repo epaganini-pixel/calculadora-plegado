@@ -4,7 +4,26 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Desarrollo de chapa · Calculadora de plegados</title>
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=6">
+<script>
+window.APP_V = 6;
+(function(){
+  function aviso(txt){
+    var d=document.getElementById('aviso-error');
+    if(!d){ d=document.createElement('div'); d.id='aviso-error';
+      d.style.cssText='position:sticky;top:0;z-index:50;background:#fde8e6;color:#8f2a24;border:1px solid #c4564f;border-radius:10px;padding:12px 16px;margin:0 0 16px;font:600 14px Inter,system-ui,sans-serif';
+      (document.body||document.documentElement).insertBefore(d,(document.body||document.documentElement).firstChild); }
+    d.textContent=txt;
+  }
+  window.addEventListener('error',function(e){
+    var t=e.target;
+    if(t&&t.tagName&&t.tagName!=='SCRIPT'&&t.tagName!=='LINK') return;   // p. ej. logo.png ausente: no es un error de la app
+    if(t&&t.tagName==='LINK'&&t.sheet) return;   // la hoja cargó; solo falló algo importado (p. ej. tipografías sin internet)
+    if(t&&(t.tagName==='SCRIPT'||t.tagName==='LINK')) aviso('No se pudo cargar '+(t.src||t.href)+'. Subí index.html, styles.css y app.js juntos a la misma carpeta.');
+    else if(e.message) aviso('Error en la página: '+e.message+'. Si recién actualizaste los archivos, refrescá con Ctrl+F5 y verificá que index.html, styles.css y app.js sean de la misma versión.');
+  },true);
+})();
+</script>
 </head>
 <body>
 <div class="wrap">
@@ -90,6 +109,6 @@
   </div>
   <footer>Fórmulas: BA = π·θ/180·(Ri + K·e) · SB = (Ri + e)·tan(θ/2) en medidas exteriores, Ri·tan(θ/2) en interiores · BD = 2·SB − BA. El factor K es orientativo: confirmalo con una prueba de plegado en tu máquina y material.</footer>
 </div>
-<script src="app.js"></script>
+<script src="app.js?v=6"></script>
 </body>
 </html>
