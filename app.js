@@ -1,6 +1,6 @@
 /* Calculadora de desarrollo de chapa · dos calculadoras independientes:
    1) alas → desarrollo   2) desarrollo → alas  */
-const APP_V = 7;
+const APP_V = 8;
 if(window.APP_V!==APP_V) throw new Error('index.html y app.js son de versiones distintas');
 const fmt = (n,d=2) => n.toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});
 const fmtIn = x => String(+x.toFixed(3)).replace('.',',');
@@ -8,11 +8,12 @@ const num = s => parseFloat(String(s).replace(',','.'));
 const RAD = Math.PI/180;
 let RQ = null;   // consulta dentro del panel activo (la usan las funciones de dibujo)
 const LAB = {t:'Espesor (e)',ri:'Radio interior (Ri)',th:'Ángulo de plegado (θ)',a1:'Longitud ala 1 (A1)',a2:'Longitud ala 2 (A2)',
-  f:'Desarrollo total (F)',d:'Distancia al pliegue (d)',k:'Factor K',w:'Ancho 3D'};
+  f:'Desarrollo total (F)',d:'Distancia al pliegue (d)',aw:'Ancho total',ah:'Alto total',k:'Factor K',w:'Ancho 3D'};
 const RULES = {
   t:[x=>x>0,'El espesor debe ser mayor que 0.'], ri:[x=>x>=0,'El radio interior no puede ser negativo.'],
   th:[x=>x>0&&x<180,'El ángulo debe estar entre 0° y 180° (sin incluirlos).'],
   a1:[x=>x>0,'La longitud del ala 1 debe ser mayor que 0.'], a2:[x=>x>0,'La longitud del ala 2 debe ser mayor que 0.'],
+  aw:[x=>x>0,'El ancho total debe ser mayor que 0.'], ah:[x=>x>0,'El alto total debe ser mayor que 0.'],
   f:[x=>x>0,'El desarrollo debe ser mayor que 0.'], d:[x=>x>0,'La distancia al pliegue debe ser mayor que 0.'],
   k:[x=>x>=0&&x<=1,'El factor K debe estar entre 0 y 1.'], w:[x=>x>0,'El ancho debe ser mayor que 0.']
 };
@@ -98,14 +99,17 @@ function draw2D(g,c,v){
   const nB = ext ? [Math.cos(p2),Math.sin(p2)] : [-Math.cos(p2),-Math.sin(p2)];
   const A0 = ext ? [0,0] : [0,T];
   const E2 = [V[0]+v.a2*tg[0], V[1]+v.a2*tg[1]];
-  const {S,s} = mapper([...poly,V,E2], W, H, 125, 90);
+  const tot = v.dm==='t';
+  const {S,s} = mapper(tot ? poly : [...poly,V,E2], W, H, 125, 90);
   const o = [`<defs><marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" style="fill:var(--dim)"/></marker></defs>`];
   // líneas virtuales hacia el vértice de medición
   const tA = ext ? [L1,0] : [L1,T];
   const tB = ext ? g.oe : g.ie;
+  if(!tot){
   o.push(`<line class="virt" x1="${S(tA)[0]}" y1="${S(tA)[1]}" x2="${S(V)[0]}" y2="${S(V)[1]}"/>`);
   o.push(`<line class="virt" x1="${S(tB)[0]}" y1="${S(tB)[1]}" x2="${S(V)[0]}" y2="${S(V)[1]}"/>`);
   o.push(`<circle cx="${S(V)[0]}" cy="${S(V)[1]}" r="3" style="fill:var(--mut)"/>`);
+  }
   // pieza
   o.push(`<polygon class="part" points="${poly.map(p=>pt(S(p))).join(' ')}"/>`);
   // eje neutro
@@ -132,11 +136,19 @@ function draw2D(g,c,v){
   const aT=[cs[0]+rr*Math.cos(p1+sw*.7), cs[1]-rr*Math.sin(p1+sw*.7)], aR=S(P(R,p1+sw*.3));
   o.push(`<line class="neutral" x1="${Q[0]}" y1="${Q[1]-17}" x2="${aT[0]}" y2="${aT[1]}" style="stroke-dasharray:none;stroke-width:.9"/>`);
   o.push(`<line class="neutral" x1="${Q[0]}" y1="${Q[1]+17}" x2="${aR[0]}" y2="${aR[1]}" style="stroke-dasharray:none;stroke-width:.9"/>`);
-  o.push(`<text class="halo amb" text-anchor="middle" x="${Q[0]}" y="${Q[1]+48}">Re ${fmt(R+T)}</text>`);
+  o.push(`<text class="halo amb" x="${Q[0]+52}" y="${Q[1]+21}">Re ${fmt(R+T)}</text>`);
   place('dl-th',Q,0,-17); place('dl-ri',Q,0,17);
   // cotas editables
-  place('dl-a1',dim(o,S,A0,V,nA,34,null));
-  place('dl-a2',dim(o,S,V,E2,nB,34,null));
+  RQ('dl-a1').hidden=tot; RQ('dl-a2').hidden=tot; RQ('dl-aw').hidden=!tot; RQ('dl-ah').hidden=!tot;
+  if(tot){   // ancho y alto totales de la pieza (extremos reales)
+    const xs=poly.map(p=>p[0]), ys=poly.map(p=>p[1]);
+    const x0=Math.min(...xs), x1=Math.max(...xs), y0=Math.min(...ys), y1=Math.max(...ys);
+    place('dl-aw',dim(o,S,[x0,y0],[x1,y0],[0,-1],34,null));
+    place('dl-ah',dim(o,S,[x1,y0],[x1,y1],[1,0],34,null));
+  } else {
+    place('dl-a1',dim(o,S,A0,V,nA,34,null));
+    place('dl-a2',dim(o,S,V,E2,nB,34,null));
+  }
   place('dl-t',dim(o,S,[0,0],[0,T],[-1,0],22,null),-52,0);
   RQ('d2').innerHTML = o.join('');
 }
@@ -252,7 +264,8 @@ function plantilla(p,inv){
   const opts=`<div class="opts">
     <div class="optg"><div class="sl">Factor K</div><div class="inp"><input data-id="k" type="text" inputmode="decimal" autocomplete="off" placeholder="ej. 0,33"><span></span></div></div>
     <div class="optg"><div class="sl">Ancho 3D (opcional)</div><div class="inp"><input data-id="w" type="text" inputmode="decimal" autocomplete="off" placeholder="ej. 60"><span>mm</span></div></div>
-    <div class="optg"><div class="sl">Las medidas de las alas son…</div>${radio('mode',[['m-ext','ext','Exteriores',1],['m-int','int','Interiores',0]])}</div>
+    <div class="optg"><div class="sl">Acotar la pieza con…</div>${radio('dm',[['dm-a','a','Alas A1 y A2',1],['dm-t','t','Ancho y alto totales',0]])}</div>
+    <div class="optg" data-id="g-mode"><div class="sl">Las medidas de las alas son…</div>${radio('mode',[['m-ext','ext','Exteriores',1],['m-int','int','Interiores',0]])}</div>
     <div class="optg"><div class="sl">Pliegue medido desde…</div>${radio('ref',[['r-1','1','Extremo ala 1',1],['r-2','2','Extremo ala 2',0]])}</div>
     <div class="optg"><div class="sl">La distancia llega hasta…</div>${radio('dp',[['dp-c','c','Centro del arco',1],['dp-t','t','Inicio del arco',0]])}</div>
   </div>`;
@@ -265,11 +278,11 @@ function plantilla(p,inv){
     <h3 class="sec">Pieza plegada · medidas de la L (mm)</h3>
     <div class="falta" data-id="falta" aria-live="polite"></div><div class="errs" data-id="errs" role="alert"></div>
     <div class="d2wrap"><svg data-id="d2" class="ghost" viewBox="0 0 680 420" role="img" aria-label="Perfil de la pieza plegada"></svg>
-      ${dl('a1','A1','a1')}${dl('a2','A2','a2')}${dl('t','e','t')}${dl('ri','Ri','ri','am')}${dl('th','θ°','th','am')}</div>`;
+      ${dl('a1','A1','a1')}${dl('a2','A2','a2')}${dl('aw','Ancho','aw')}${dl('ah','Alto','ah')}${dl('t','e','t')}${dl('ri','Ri','ri','am')}${dl('th','θ°','th','am')}</div>`;
   const pieza2 = inv ? `
     <h3 class="sec" style="margin-top:22px">Pieza plegada · medidas finales (mm)</h3>
     <div class="d2wrap"><svg data-id="d2" viewBox="0 0 680 420" role="img" aria-label="Perfil de la pieza plegada"></svg>
-      ${dl('a1','A1','a1','',true)}${dl('a2','A2','a2','',true)}${dl('t','e','t','',true)}${dl('ri','Ri','ri','am',true)}${dl('th','θ°','th','am',true)}</div>` : '';
+      ${dl('a1','A1','a1','',true)}${dl('a2','A2','a2','',true)}${dl('aw','Ancho','aw','',true)}${dl('ah','Alto','ah','',true)}${dl('t','e','t','',true)}${dl('ri','Ri','ri','am',true)}${dl('th','θ°','th','am',true)}</div>` : '';
   return `
   <section class="panel">${opts}${entrada}
     <div class="calcbar"><button class="primary" data-id="calc" type="button">Calcular</button><button data-id="reset" type="button">Restablecer</button>
@@ -282,6 +295,10 @@ function plantilla(p,inv){
       <div class="kpi"><b data-id="kBA"></b><i>Desarrollo del arco (BA)</i></div>
       <div class="kpi hl"><b data-id="kPos"></b><i data-id="kPosl">Distancia al pliegue (d)</i></div>
       <div class="kpi"><b data-id="kSB"></b><i data-id="kSBl">Setback</i></div>
+      <div class="kpi"><b data-id="kW"></b><i>Ancho total de la pieza</i></div>
+      <div class="kpi"><b data-id="kH"></b><i>Alto total de la pieza</i></div>
+      <div class="kpi"><b data-id="kA1"></b><i>Ala 1 (A1, al centro del pliegue)</i></div>
+      <div class="kpi"><b data-id="kA2"></b><i>Ala 2 (A2, al centro del pliegue)</i></div>
       <div class="kpi"><b data-id="kL1"></b><i>Ala 1 recta</i></div>
       <div class="kpi"><b data-id="kL2"></b><i>Ala 2 recta</i></div>
       <div class="kpi"><b data-id="kRi"></b><i>Radio interior</i></div>
@@ -302,20 +319,38 @@ function partes(v){
   const tn=Math.tan(v.th*RAD/2), ba=RAD*v.th*(v.ri+v.k*v.t), sb=(v.mode==='ext'?v.ri+v.t:v.ri)*tn;
   return {ba, sb, bd:2*sb-ba};
 }
+// Ancho y alto totales (extremos reales) → A1 y A2 (θ = ángulo de plegado)
+function desdeTotales(v){
+  const T=v.t, R=v.ri, th=v.th*RAD, s=Math.sin(th), c=Math.cos(th);
+  let L1, L2;
+  if(c>=-1e-9){ L2=(v.ah-T-R+R*c)/s; L1=v.aw-(R+T)*s-L2*c; }
+  else {
+    L2=(v.ah-T-R+(R+T)*c)/s; L1=v.aw-R-T;
+    if(L1+R*s+L2*c < -1e-9) return {err:'Con ese ángulo el ala 2 vuelve por detrás del ala 1: usá las medidas de las alas.'};
+  }
+  if(!(L1>=-1e-9) || !(L2>=-1e-9)) return {err:'Con ese ancho y alto no entra el radio de plegado: revisá las medidas, el espesor o el radio.'};
+  return {L1:Math.max(L1,0), L2:Math.max(L2,0)};
+}
+function bbox(g){
+  const xs=g.poly.map(p=>p[0]), ys=g.poly.map(p=>p[1]);
+  return {w:Math.max(...xs)-Math.min(...xs), h:Math.max(...ys)-Math.min(...ys)};
+}
 const errHtml = a => a.map(e=>'<div>⚠ '+e+'</div>').join('');
 
 function crear(root, modo){
   const inv = modo==='inverso', p = inv?'b':'a';
   root.innerHTML = plantilla(p,inv);
   const r = id => root.querySelector('[data-id="'+id+'"]');
-  const IN = inv ? {t:'bt',ri:'bri',th:'bth',f:'f',d:'d',k:'k',w:'w'} : {t:'t',ri:'ri',th:'th',a1:'a1',a2:'a2',k:'k',w:'w'};
-  const REQ = inv ? ['t','ri','th','k','f','d'] : ['t','ri','th','k','a1','a2'];
+  const IN = inv ? {t:'bt',ri:'bri',th:'bth',f:'f',d:'d',k:'k',w:'w'} : {t:'t',ri:'ri',th:'th',a1:'a1',a2:'a2',aw:'aw',ah:'ah',k:'k',w:'w'};
 
   function leer(){
     const q = n => root.querySelector('input[name="'+p+'-'+n+'"]:checked').value;
-    const v={mode:q('mode'), ref:+q('ref'), dp:q('dp'), src:inv?'F':'L'}, errs=[], missing=[];
+    const v={mode:q('mode'), ref:+q('ref'), dp:q('dp'), dm:q('dm'), src:inv?'F':'L'}, errs=[], missing=[];
+    const act=['t','ri','th','k','w',...(inv?['f','d']:(v.dm==='t'?['aw','ah']:['a1','a2']))];
+    const REQ=act.filter(k=>k!=='w');
     Object.keys(IN).forEach(key=>{
       const el=r(IN[key]), box=el.closest('.dl')||el.closest('.inp'), raw=el.value.trim();
+      if(!act.includes(key)){ el.classList.remove('bad'); box.classList.remove('bad','empty'); v[key]=NaN; return; }
       let bad=false; v[key]=NaN;
       if(raw!==''){
         const x=num(raw); v[key]=x;
@@ -331,6 +366,10 @@ function crear(root, modo){
   // directo: A1, A2 → desarrollo · inverso: desarrollo + distancia al pliegue → A1, A2
   function resolver(v0){
     const v={...v0};
+    if(!inv && v.dm==='t'){
+      const x=desdeTotales(v); if(x.err) return {errs:[x.err]};
+      v.mode='ext'; const sbx=partes(v).sb; v.a1=x.L1+sbx; v.a2=x.L2+sbx;
+    }
     if(inv){
       const {ba,sb,bd}=partes(v);
       const Aref=v.d-(v.dp==='c'?ba/2:0)+sb, Aoth=v.f+bd-Aref;
@@ -354,6 +393,7 @@ function crear(root, modo){
     RQ=r;
     const {v,errs,missing}=leer();
     if(invalida) ocultar();
+    if(!inv) r('g-mode').hidden = v.dm==='t';
     const all=errs.slice(); let real=false, c=null, vv=v;
     if(!errs.length && !missing.length){
       const rs=resolver(v);
@@ -364,7 +404,7 @@ function crear(root, modo){
     f.className='falta'+(n||all.length?'':' ok');
     f.textContent = n ? 'Faltan '+n+' dato'+(n>1?'s':'')+': completá las celdas que titilan.' : (all.length ? 'Corregí los valores marcados en rojo.' : 'Datos completos · tocá Calcular.');
     if(real) pintar(vv,c,false);
-    else { const vg={...GH,mode:v.mode,ref:v.ref,dp:v.dp}; pintar(vg,calcular(pieza(vg)),true); }
+    else { const vg={...GH,mode:v.mode,ref:v.ref,dp:v.dp,dm:v.dm}; pintar(vg,calcular(pieza(vg)),true); }
   }
   function animar(fin){
     const btn=r('calc'), bar=r('pbar'), fill=r('pfill'), lab=r('plab');
@@ -383,14 +423,14 @@ function crear(root, modo){
     RQ=r;
     const {v,errs,missing}=leer(); if(errs.length||missing.length) return;
     const rs=resolver(v); if(rs.errs.length){ r('errs').innerHTML=errHtml(rs.errs); return; }
-    const vv=rs.v, c=rs.c, b=c.bends[0], ext=vv.mode==='ext', dOut=dDe(c,vv), g=geometry(c,vv);
+    const vv=rs.v, c=rs.c, b=c.bends[0], ext=vv.mode==='ext', dOut=dDe(c,vv), g=geometry(c,vv), bb=bbox(g);
     pintar(vv,c,false);
     if(inv){   // pieza final de solo lectura
-      [['a1',vv.a1],['a2',vv.a2],['t',vv.t],['ri',vv.ri],['th',vv.th]].forEach(([id,val])=>{ r(id).value=fmtIn(val); });
+      [['a1',vv.a1],['a2',vv.a2],['aw',bb.w],['ah',bb.h],['t',vv.t],['ri',vv.ri],['th',vv.th]].forEach(([id,val])=>{ r(id).value=fmtIn(val); });
       draw2D(g,c,vv); r('d2').classList.remove('ghost');
     }
     draw3D(g,{...vv,w:vv.w>0?vv.w:Math.max(vv.a1,vv.a2)*0.6});
-    const mm='<small>mm</small>', med=ext?'exteriores':'interiores', ini=vv.dp==='c'?'centro':'inicio', T=r('total');
+    const mm='<small>mm</small>', med=(!inv&&vv.dm==='t')?'totales: ancho y alto':(ext?'exteriores':'interiores'), ini=vv.dp==='c'?'centro':'inicio', T=r('total');
     T.classList.toggle('dual',inv);
     if(!inv){
       r('heroLab').textContent='DESARROLLO TOTAL (mm)';
@@ -398,7 +438,7 @@ function crear(root, modo){
       r('heroNote').textContent='Largo de chapa a cortar antes de plegar (medidas '+med+'). Pliegue a '+fmt(dOut)+' mm del extremo del ala '+vv.ref+' ('+ini+' del arco).';
     } else {
       r('heroLab').textContent='MEDIDAS FINALES DE LA L (mm)';
-      T.innerHTML=fmt(vv.a1)+'<small>A1</small>'+fmt(vv.a2)+'<small>A2</small>';
+      T.innerHTML = vv.dm==='t' ? fmt(bb.w)+'<small>ancho</small>'+fmt(bb.h)+'<small>alto</small>' : fmt(vv.a1)+'<small>A1</small>'+fmt(vv.a2)+'<small>A2</small>';
       r('heroNote').textContent='Medidas '+med+' de la pieza plegada, para una chapa de '+fmt(c.flat)+' mm con el pliegue a '+fmt(vv.d)+' mm del extremo del ala '+vv.ref+' ('+ini+' del arco).';
     }
     r('kBD').textContent=fmt(b.bd)+' mm'; r('kBDl').textContent='Descuento de plegado (BD, '+(ext?'ext.':'int.')+')';
@@ -406,6 +446,8 @@ function crear(root, modo){
     r('kSB').textContent=fmt(b.sb)+' mm'; r('kSBl').textContent=ext?'Outside setback (OSSB)':'Inside setback (ISSB)';
     r('kL1').textContent=fmt(c.legs[0])+' mm'; r('kL2').textContent=fmt(c.legs[1])+' mm';
     r('kRi').textContent=fmt(b.ri)+' mm'; r('kRe').textContent=fmt(b.re)+' mm';
+    r('kW').textContent=fmt(bb.w)+' mm'; r('kH').textContent=fmt(bb.h)+' mm';
+    r('kA1').textContent=fmt(vv.a1)+' mm'; r('kA2').textContent=fmt(vv.a2)+' mm';
     r('kPos').textContent=fmt(dOut)+' mm';
     r('kPosl').textContent='Distancia al pliegue (d): hasta el '+ini+' del arco, desde el extremo del ala '+vv.ref;
     drawStrip(c,vv,x=>vv.ref===1?x:c.flat-x);
@@ -434,7 +476,7 @@ function crear(root, modo){
   });
   r('reset').addEventListener('click', ()=>{
     root.querySelectorAll('input[type=text]').forEach(i=>{ i.value=''; });
-    ['m-ext','r-1','dp-c'].forEach(id=>{ r(id).checked=true; });
+    ['m-ext','r-1','dp-c','dm-a'].forEach(id=>{ r(id).checked=true; });
     ocultar(); refrescar(false);
   });
   refrescar(false);
