@@ -110,3 +110,17 @@ footer{margin-top:18px;color:var(--muted);font-size:12px}
 .plab{display:block;font-size:12px;color:var(--muted);margin-top:6px}
 .reveal{animation:rise .45s ease both}
 @media(prefers-reduced-motion:reduce){.dl.empty,.inp.empty input,.ptrack i,.reveal,.shake{animation:none!important}}
+
+/* ===== Pestañas y opciones por calculadora ===== */
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px}
+@media(max-width:700px){.tabs{grid-template-columns:1fr}}
+.tab{text-align:left;padding:14px 18px;min-height:66px;border-radius:14px;font-size:15px;line-height:1.3}
+.tab small{display:block;font-weight:500;font-size:12px;color:var(--muted);margin-top:3px}
+.tab.on{background:var(--text);border-color:var(--text);color:#fff}
+.tab.on small{color:#cfc9bb}
+.opts{display:flex;flex-wrap:wrap;gap:6px 22px;align-items:flex-end;padding-bottom:16px;margin-bottom:16px;border-bottom:1px solid var(--border-soft)}
+.optg{min-width:150px}
+.optg .sl{margin:0 0 6px}
+.optg .inp{width:140px}
+.optg .seg{min-width:230px}
+.dl.calc input{cursor:default}
