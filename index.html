@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Desarrollo de chapa · Calculadora de plegados</title>
-<link rel="stylesheet" href="styles.css?v=6">
+<link rel="stylesheet" href="styles.css?v=7">
 <script>
-window.APP_V = 6;
+window.APP_V = 7;
 (function(){
   function aviso(txt){
     var d=document.getElementById('aviso-error');
@@ -35,80 +35,18 @@ window.APP_V = 6;
         <div class="sub">Calculadora de plegados · pieza en L · todas las medidas en mm (coma o punto decimal)</div>
       </div>
     </div>
-    <div class="hbtns"><button id="reset" type="button">Restablecer valores</button></div>
   </div>
 
-  <div class="grid">
-    <aside class="panel">
-      <h3 class="sec">Parámetros generales</h3>
-      <div id="fields"></div>
-      <div class="sl">Las medidas de las alas son…</div>
-      <div class="seg">
-        <input type="radio" name="mode" id="m-ext" value="ext" checked><label for="m-ext">Exteriores</label>
-        <input type="radio" name="mode" id="m-int" value="int"><label for="m-int">Interiores</label>
-      </div>
-      <div class="sl">Medir el pliegue desde…</div>
-      <div class="seg">
-        <input type="radio" name="ref" id="r-1" value="1" checked><label for="r-1">Extremo ala 1</label>
-        <input type="radio" name="ref" id="r-2" value="2"><label for="r-2">Extremo ala 2</label>
-      </div>
-      <div id="dpBlock"><div class="sl">La distancia al pliegue (d) llega hasta…</div>
-        <div class="seg">
-          <input type="radio" name="dp" id="dp-c" value="c" checked><label for="dp-c">Centro del arco</label>
-          <input type="radio" name="dp" id="dp-t" value="t"><label for="dp-t">Inicio del arco</label>
-        </div></div>
-      <p class="hint" style="margin-top:14px">Cargá espesor, radio, ángulo y factor K, y después <b>o bien</b> las alas A1 y A2 (dibujo de la L) <b>o bien</b> el desarrollo F y la distancia d (chapa desplegada). Al tocar Calcular se completa lo otro. Las celdas que titilan en ámbar son las que faltan.</p>
-    </aside>
-
-    <main class="main">
-      <section class="panel">
-        <h3 class="sec">Pieza plegada · medidas de la L (mm)</h3>
-        <div class="falta" id="falta" aria-live="polite"></div>
-        <div class="errs" id="errs" role="alert"></div>
-        <div class="d2wrap">
-          <svg id="d2" class="ghost" viewBox="0 0 680 420" role="img" aria-label="Perfil de la pieza plegada"></svg>
-          <label class="dl" id="dl-a1"><b>A1</b><input id="a1" type="text" inputmode="decimal" autocomplete="off"></label>
-          <label class="dl" id="dl-a2"><b>A2</b><input id="a2" type="text" inputmode="decimal" autocomplete="off"></label>
-          <label class="dl" id="dl-t"><b>e</b><input id="t" type="text" inputmode="decimal" autocomplete="off"></label>
-          <label class="dl am" id="dl-ri"><b>Ri</b><input id="ri" type="text" inputmode="decimal" autocomplete="off"></label>
-          <label class="dl am" id="dl-th"><b>θ°</b><input id="th" type="text" inputmode="decimal" autocomplete="off"></label>
-        </div>
-        <h3 class="sec" style="margin-top:20px">Chapa desplegada · largo y posición del pliegue (mm)</h3>
-        <div class="d2wrap">
-          <svg id="dflat" class="ghost" viewBox="0 0 680 160" role="img" aria-label="Chapa desplegada"></svg>
-          <label class="dl" id="dl-f"><b>F</b><input id="f" type="text" inputmode="decimal" autocomplete="off"></label>
-          <label class="dl" id="dl-d"><b>d</b><input id="d" type="text" inputmode="decimal" autocomplete="off"></label>
-        </div>
-        <div class="calcbar">
-          <button id="calc" class="primary" type="button">Calcular</button>
-          <div class="pbar" id="pbar" hidden><div class="ptrack"><i id="pfill"></i></div><span class="plab mono" id="plab" aria-live="polite"></span></div>
-        </div>
-      </section>
-
-      <section class="panel hero" id="resultado" tabindex="-1" hidden>
-        <div class="lab" id="heroLab"></div>
-        <div class="total mono" id="total"></div>
-        <div class="note" id="heroNote" style="margin:0"></div>
-        <div class="kpis">
-          <div class="kpi"><b id="kBD"></b><i id="kBDl">Descuento de plegado (BD)</i></div>
-          <div class="kpi"><b id="kBA"></b><i>Desarrollo del arco (BA)</i></div>
-          <div class="kpi hl"><b id="kPos"></b><i id="kPosl">Distancia al pliegue (d)</i></div>
-          <div class="kpi"><b id="kSB"></b><i id="kSBl">Setback</i></div>
-          <div class="kpi"><b id="kL1"></b><i>Ala 1 recta</i></div>
-          <div class="kpi"><b id="kL2"></b><i>Ala 2 recta</i></div>
-          <div class="kpi"><b id="kRi"></b><i>Radio interior</i></div>
-          <div class="kpi"><b id="kRe"></b><i>Radio exterior</i></div>
-        </div>
-        <h3 class="sec" style="margin-top:22px">Cómo marcar la chapa</h3>
-        <svg id="strip" viewBox="0 0 680 150" role="img" aria-label="Chapa desarrollada con la posición del plegado"></svg>
-        <p class="note" id="stripNote"></p>
-      </section>
-
-      <section class="panel"><h3 class="sec">Vista 3D</h3><svg id="d3" class="ghost" viewBox="0 0 680 420" role="img" aria-label="Vista 3D de la pieza"></svg></section>
-    </main>
+  <div class="tabs" role="tablist">
+    <button class="tab on" role="tab" aria-selected="true" data-t="pa" type="button">1 · Tengo las medidas de la L<small>Calcular el desarrollo de la chapa</small></button>
+    <button class="tab" role="tab" aria-selected="false" data-t="pb" type="button">2 · Tengo el desarrollo de la chapa<small>Calcular las medidas finales de la L</small></button>
   </div>
+
+  <div id="pa" class="main"></div>
+  <div id="pb" class="main" hidden></div>
+
   <footer>Fórmulas: BA = π·θ/180·(Ri + K·e) · SB = (Ri + e)·tan(θ/2) en medidas exteriores, Ri·tan(θ/2) en interiores · BD = 2·SB − BA. El factor K es orientativo: confirmalo con una prueba de plegado en tu máquina y material.</footer>
 </div>
-<script src="app.js?v=6"></script>
+<script src="app.js?v=7"></script>
 </body>
 </html>
