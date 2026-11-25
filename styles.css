@@ -124,3 +124,9 @@ footer{margin-top:18px;color:var(--muted);font-size:12px}
 .optg .inp{width:140px}
 .optg .seg{min-width:230px}
 .dl.calc input{cursor:default}
+
+/* En pantallas angostas el dibujo conserva su tamaño y se desplaza con el dedo */
+.d2scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.d2wrap{min-width:640px}
+.main>*,.panel,.d2scroll{min-width:0;max-width:100%}
+.main{grid-template-columns:minmax(0,1fr)}
