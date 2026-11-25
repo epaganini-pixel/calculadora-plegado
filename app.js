@@ -58,9 +58,11 @@ function geometry(c,v){
   const C = [L1, T+R];
   const P = (r,p)=>[C[0]+r*Math.cos(p), C[1]+r*Math.sin(p)];
   const tg = [-Math.sin(p2), Math.cos(p2)];
-  const N = 28, ao=[], ai=[];
-  for(let i=0;i<=N;i++){ const p = p1+(p2-p1)*i/N; ao.push(P(R+T,p)); ai.push(P(R,p)); }
-  const oe = ao[N], ie = ai[N];
+  const N = 28, ao=[], ai=[], ang=[];
+  for(let i=0;i<=N;i++) ang.push(p1+(p2-p1)*i/N);
+  if(p2>0) ang.push(0);                 // el punto más a la derecha del arco exterior (φ = 0) debe estar exacto
+  ang.sort((x,y)=>x-y).forEach(p=>{ ao.push(P(R+T,p)); ai.push(P(R,p)); });
+  const oe = ao[ao.length-1], ie = ai[ai.length-1];
   const poly = [[0,0], ...ao, [oe[0]+L2*tg[0], oe[1]+L2*tg[1]], [ie[0]+L2*tg[0], ie[1]+L2*tg[1]], ...ai.slice().reverse(), [0,T]];
   return {b,T,R,L1,L2,p1,p2,C,P,tg,poly,ao,ai,oe,ie};
 }
@@ -130,13 +132,14 @@ function draw2D(g,c,v){
   const ap=[]; for(let i=0;i<=24;i++){const p=p1+(p2-p1)*i/24; ap.push(`${(cs[0]+rr*Math.cos(p)).toFixed(1)},${(cs[1]-rr*Math.sin(p)).toFixed(1)}`);}
   o.push(`<polyline class="bend" style="stroke-width:1.2" points="${ap.join(' ')}"/>`);
   // Ri y θ: celdas en el lado cóncavo, con guías hacia el arco
-  const sw=p2-p1, beta=am+Math.PI;
-  let Q=[cs[0]+80*Math.cos(beta), cs[1]-80*Math.sin(beta)];
+  const sw=p2-p1, conv=(!tot && !ext);   // con medidas interiores las cotas de las alas van del lado cóncavo: Ri y θ pasan al lado convexo
+  const beta=conv?am:am+Math.PI, dist=conv?(R+T)*s+70:80;
+  let Q=[cs[0]+dist*Math.cos(beta), cs[1]-dist*Math.sin(beta)];
   Q=[Math.min(Math.max(Q[0],70),W-70), Math.min(Math.max(Q[1],50),H-60)];
   const aT=[cs[0]+rr*Math.cos(p1+sw*.7), cs[1]-rr*Math.sin(p1+sw*.7)], aR=S(P(R,p1+sw*.3));
   o.push(`<line class="neutral" x1="${Q[0]}" y1="${Q[1]-17}" x2="${aT[0]}" y2="${aT[1]}" style="stroke-dasharray:none;stroke-width:.9"/>`);
   o.push(`<line class="neutral" x1="${Q[0]}" y1="${Q[1]+17}" x2="${aR[0]}" y2="${aR[1]}" style="stroke-dasharray:none;stroke-width:.9"/>`);
-  o.push(`<text class="halo amb" x="${Q[0]+52}" y="${Q[1]+21}">Re ${fmt(R+T)}</text>`);
+  o.push(`<text class="halo amb" text-anchor="middle" x="${Q[0]}" y="${conv?Q[1]+46:Q[1]-34}">Re ${fmt(R+T)}</text>`);
   place('dl-th',Q,0,-17); place('dl-ri',Q,0,17);
   // cotas editables
   RQ('dl-a1').hidden=tot; RQ('dl-a2').hidden=tot; RQ('dl-aw').hidden=!tot; RQ('dl-ah').hidden=!tot;
@@ -272,17 +275,17 @@ function plantilla(p,inv){
   const entrada = inv ? `
     <h3 class="sec">Chapa desplegada · desarrollo y datos del plegado (mm)</h3>
     <div class="falta" data-id="falta" aria-live="polite"></div><div class="errs" data-id="errs" role="alert"></div>
-    <div class="d2wrap"><svg data-id="dflat" class="ghost" viewBox="0 0 680 270" role="img" aria-label="Chapa desplegada"></svg>
-      ${dl('f','F','f')}${dl('d','d','d')}${dl('be','e','bt')}${dl('bri','Ri','bri','am')}${dl('bth','θ°','bth','am')}</div>`
+    <div class="d2scroll"><div class="d2wrap"><svg data-id="dflat" class="ghost" viewBox="0 0 680 270" role="img" aria-label="Chapa desplegada"></svg>
+      ${dl('f','F','f')}${dl('d','d','d')}${dl('be','e','bt')}${dl('bri','Ri','bri','am')}${dl('bth','θ°','bth','am')}</div</div></div>`
   : `
     <h3 class="sec">Pieza plegada · medidas de la L (mm)</h3>
     <div class="falta" data-id="falta" aria-live="polite"></div><div class="errs" data-id="errs" role="alert"></div>
-    <div class="d2wrap"><svg data-id="d2" class="ghost" viewBox="0 0 680 420" role="img" aria-label="Perfil de la pieza plegada"></svg>
-      ${dl('a1','A1','a1')}${dl('a2','A2','a2')}${dl('aw','Ancho','aw')}${dl('ah','Alto','ah')}${dl('t','e','t')}${dl('ri','Ri','ri','am')}${dl('th','θ°','th','am')}</div>`;
+    <div class="d2scroll"><div class="d2wrap"><svg data-id="d2" class="ghost" viewBox="0 0 680 420" role="img" aria-label="Perfil de la pieza plegada"></svg>
+      ${dl('a1','A1','a1')}${dl('a2','A2','a2')}${dl('aw','Ancho','aw')}${dl('ah','Alto','ah')}${dl('t','e','t')}${dl('ri','Ri','ri','am')}${dl('th','θ°','th','am')}</div</div></div>`;
   const pieza2 = inv ? `
     <h3 class="sec" style="margin-top:22px">Pieza plegada · medidas finales (mm)</h3>
-    <div class="d2wrap"><svg data-id="d2" viewBox="0 0 680 420" role="img" aria-label="Perfil de la pieza plegada"></svg>
-      ${dl('a1','A1','a1','',true)}${dl('a2','A2','a2','',true)}${dl('aw','Ancho','aw','',true)}${dl('ah','Alto','ah','',true)}${dl('t','e','t','',true)}${dl('ri','Ri','ri','am',true)}${dl('th','θ°','th','am',true)}</div>` : '';
+    <div class="d2scroll"><div class="d2wrap"><svg data-id="d2" viewBox="0 0 680 420" role="img" aria-label="Perfil de la pieza plegada"></svg>
+      ${dl('a1','A1','a1','',true)}${dl('a2','A2','a2','',true)}${dl('aw','Ancho','aw','',true)}${dl('ah','Alto','ah','',true)}${dl('t','e','t','',true)}${dl('ri','Ri','ri','am',true)}${dl('th','θ°','th','am',true)}</div</div></div>` : '';
   return `
   <section class="panel">${opts}${entrada}
     <div class="calcbar"><button class="primary" data-id="calc" type="button">Calcular</button><button data-id="reset" type="button">Restablecer</button>
@@ -402,7 +405,7 @@ function crear(root, modo){
     r('errs').innerHTML=errHtml(all);
     const n=missing.length, f=r('falta');
     f.className='falta'+(n||all.length?'':' ok');
-    f.textContent = n ? 'Faltan '+n+' dato'+(n>1?'s':'')+': completá las celdas que titilan.' : (all.length ? 'Corregí los valores marcados en rojo.' : 'Datos completos · tocá Calcular.');
+    f.textContent = n ? (n>1?'Faltan '+n+' datos':'Falta 1 dato')+': completá las celdas que titilan.' : (all.length ? 'Corregí los valores marcados en rojo.' : 'Datos completos · tocá Calcular.');
     if(real) pintar(vv,c,false);
     else { const vg={...GH,mode:v.mode,ref:v.ref,dp:v.dp,dm:v.dm}; pintar(vg,calcular(pieza(vg)),true); }
   }
@@ -441,6 +444,7 @@ function crear(root, modo){
       T.innerHTML = vv.dm==='t' ? fmt(bb.w)+'<small>ancho</small>'+fmt(bb.h)+'<small>alto</small>' : fmt(vv.a1)+'<small>A1</small>'+fmt(vv.a2)+'<small>A2</small>';
       r('heroNote').textContent='Medidas '+med+' de la pieza plegada, para una chapa de '+fmt(c.flat)+' mm con el pliegue a '+fmt(vv.d)+' mm del extremo del ala '+vv.ref+' ('+ini+' del arco).';
     }
+    if(!inv && vv.dm==='t' && vv.th>90) r('heroNote').textContent += ' Con θ > 90° se asume que el ala 2 no sobrepasa el extremo del ala 1.';
     r('kBD').textContent=fmt(b.bd)+' mm'; r('kBDl').textContent='Descuento de plegado (BD, '+(ext?'ext.':'int.')+')';
     r('kBA').textContent=fmt(b.ba)+' mm';
     r('kSB').textContent=fmt(b.sb)+' mm'; r('kSBl').textContent=ext?'Outside setback (OSSB)':'Inside setback (ISSB)';
